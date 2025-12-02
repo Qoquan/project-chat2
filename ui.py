@@ -1,67 +1,78 @@
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
+from ttkbootstrap.scrolled import ScrolledText
+from tkinter import BOTH, LEFT, RIGHT, X, Y
 
 class ChatUI:
     def __init__(self):
         self.root = ttk.Window(themename="cyborg")
         self.root.title("Chat Client - Login")
 
-        frame = ttk.Frame(self.root, padding=30)
-        frame.pack(expand=True)
+        # --- Login Screen ---
+        self.login_frame = ttk.Frame(self.root, padding=30)
+        self.login_frame.pack(expand=True)
 
-        self.entry_ip = ttk.Entry(frame, width=30)
+        ttk.Label(self.login_frame, text="Connexion au serveur", font=("Segoe UI", 16, "bold")).pack(pady=10)
+
+        self.entry_ip = ttk.Entry(self.login_frame, width=30)
         self.entry_ip.insert(0, "localhost")
         self.entry_ip.pack(pady=5)
 
-        self.entry_port = ttk.Entry(frame, width=30)
+        self.entry_port = ttk.Entry(self.login_frame, width=30)
         self.entry_port.insert(0, "8765")
         self.entry_port.pack(pady=5)
 
-        self.entry_username = ttk.Entry(frame, width=30)
+        self.entry_username = ttk.Entry(self.login_frame, width=30)
         self.entry_username.insert(0, "User")
         self.entry_username.pack(pady=5)
 
-        self.btn_connect = ttk.Button(frame, text="Connect", bootstyle=SUCCESS)
+        self.btn_connect = ttk.Button(self.login_frame, text="Se connecter", bootstyle=SUCCESS)
         self.btn_connect.pack(pady=10)
 
-    def run(self):
-        self.root.mainloop()
+        # --- Variables UI ---
+        self.text_area = None
+        self.list_rooms = None
+        self.entry_message = None
+        self.btn_send = None
 
     def build_chat_screen(self):
-        self.root.title("Chat Client")
+        """Créer l'interface principale chat après connexion"""
+        self.login_frame.destroy()
 
-        # Efface écran login
-        for w in self.root.winfo_children():
-            w.destroy()
+        main_frame = ttk.Frame(self.root, padding=10)
+        main_frame.pack(fill=BOTH, expand=True)
 
-        main = ttk.Frame(self.root, padding=10)
-        main.pack(fill=BOTH, expand=True)
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.columnconfigure(1, weight=4)
 
-        # Liste salons
-        room_frame = ttk.Labelframe(main, text="Rooms")
-        room_frame.pack(side=LEFT, fill=Y, padx=5)
+        # Liste des salons
+        room_frame = ttk.Labelframe(main_frame, text="Salons")
+        room_frame.grid(row=0, column=0, sticky="nswe", padx=5, pady=5)
 
         self.list_rooms = ttk.Listbox(room_frame)
         self.list_rooms.pack(fill=BOTH, expand=True, padx=5, pady=5)
 
         # Zone messages
-        msg_frame = ttk.Labelframe(main, text="Messages")
-        msg_frame.pack(side=RIGHT, fill=BOTH, expand=True)
+        msg_frame = ttk.Labelframe(main_frame, text="Messages")
+        msg_frame.grid(row=0, column=1, sticky="nswe", padx=5, pady=5)
 
-        from ttkbootstrap.scrolled import ScrolledText
         self.text_area = ScrolledText(msg_frame, height=20)
         self.text_area.pack(fill=BOTH, expand=True, padx=5, pady=5)
+        self.text_area.configure(state="disabled")
 
-        # Champ message
-        bottom = ttk.Frame(main)
-        bottom.pack(fill=X, pady=5)
+        # Zone d’écriture
+        entry_frame = ttk.Frame(main_frame)
+        entry_frame.grid(row=1, column=1, sticky="we", pady=5)
 
-        self.entry_message = ttk.Entry(bottom)
-        self.entry_message.pack(side=LEFT, fill=X, expand=True, padx=5)
+        self.entry_message = ttk.Entry(entry_frame)
+        self.entry_message.pack(side=LEFT, fill=BOTH, expand=True, padx=5)
 
-        self.btn_send = ttk.Button(bottom, text="Send", bootstyle=PRIMARY)
+        self.btn_send = ttk.Button(entry_frame, text="Envoyer", bootstyle=PRIMARY)
         self.btn_send.pack(side=RIGHT, padx=5)
 
     def append_message(self, text):
+        """Ajouter un message reçu dans la zone texte"""
+        self.text_area.configure(state="normal")
         self.text_area.insert("end", text + "\n")
+        self.text_area.configure(state="disabled")
         self.text_area.see("end")

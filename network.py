@@ -9,17 +9,12 @@ class ChatNetwork:
     async def connect(self, uri, username):
         self.ws = await websockets.connect(uri)
 
-        # Envoi du login
+        # Rejoindre le salon par défaut
         await self.ws.send(make_message(
             "join_room",
             user=username,
             room="general"
         ))
-
-    async def receive_loop(self, callback):
-        while True:
-            msg = await self.ws.recv()
-            callback(parse_message(msg))
 
     async def send_message(self, room, user, content):
         await self.ws.send(make_message(
@@ -28,3 +23,9 @@ class ChatNetwork:
             user=user,
             content=content
         ))
+
+    async def receive_loop(self, callback):
+        """Boucle infinie pour recevoir les messages"""
+        while True:
+            msg = await self.ws.recv()
+            callback(parse_message(msg))
