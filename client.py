@@ -1,41 +1,40 @@
 import threading
 import asyncio
 from ui import ChatUI
-from network import ChatNetwork
+from network import ChatNetwork  # ton module réseau
 
 class ChatClientApp:
     def __init__(self):
-        self.ui = ChatUI()
+        # UI avec callback
+        self.ui = ChatUI(on_send_callback=self.send_message)
         self.network = ChatNetwork()
         self.username = None
         self.current_room = "general"
-        self.queue = []
 
+        # Attacher la commande de connexion
         self.ui.btn_connect.configure(command=self.connect)
-        self.ui.btn_send.configure(command=self.send_message)
 
     # --- Connexion serveur ---
     def connect(self):
         ip = self.ui.entry_ip.get()
         port = self.ui.entry_port.get()
         self.username = self.ui.entry_username.get().strip()
-
         if not self.username:
             return
 
         uri = f"ws://{ip}:{port}"
 
+        # Construire le chat screen avant le réseau
+        self.ui.build_chat_screen()
+
         # Thread pour le réseau
         threading.Thread(target=self.run_async_client, args=(uri,), daemon=True).start()
-        self.ui.build_chat_screen()
 
     def run_async_client(self, uri):
         asyncio.run(self.websocket_handler(uri))
 
     async def websocket_handler(self, uri):
         await self.network.connect(uri, self.username)
-
-        # Boucle reception messages
         await self.network.receive_loop(self.handle_message)
 
     # --- Envoi message ---
@@ -53,7 +52,6 @@ class ChatClientApp:
     # --- Traitement message reçu ---
     def handle_message(self, msg):
         action = msg.get("action")
-
         if action == "receive_message":
             self.ui.append_message(f"[{msg['user']}] : {msg['content']}")
         elif action == "system":
@@ -66,5 +64,7 @@ class ChatClientApp:
     def run(self):
         self.ui.root.mainloop()
 
+
 if __name__ == "__main__":
-    ChatClientApp().run()
+    app = ChatClientApp()
+    app.run()
