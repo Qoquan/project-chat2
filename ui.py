@@ -61,3 +61,7 @@ class ChatUI:
 
         self.btn_send = ttk.Button(bottom, text="Send", bootstyle=PRIMARY)
         self.btn_send.pack(side=RIGHT, padx=5)
+
+    def append_message(self, text):
+        self.text_area.insert("end", text + "\n")
+        self.text_area.see("end")

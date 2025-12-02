@@ -2,6 +2,7 @@ import threading
 from ui import ChatUI
 from network import ChatNetwork
 import asyncio
+import queue
 
 class ChatClientApp:
     def __init__(self):
@@ -9,7 +10,7 @@ class ChatClientApp:
         self.network = ChatNetwork()
 
         self.ui.btn_connect.configure(command=self.connect)
-
+        self.queue = queue.Queue()
     def connect(self):
         ip = self.ui.entry_ip.get()
         port = self.ui.entry_port.get()
@@ -23,6 +24,8 @@ class ChatClientApp:
             daemon=True
         )
         thread.start()
+    def run_async_receive(self):
+        asyncio.run(self.network.receive_loop(self.queue.put))
 
     def run_async(self, uri, username):
         asyncio.run(self.network.connect(uri, username))
