@@ -20,3 +20,11 @@ class ChatNetwork:
         while True:
             msg = await self.ws.recv()
             callback(parse_message(msg))
+
+    async def send_message(self, room, user, content):
+        await self.ws.send(make_message(
+            "send_message",
+            room=room,
+            user=user,
+            content=content
+        ))
