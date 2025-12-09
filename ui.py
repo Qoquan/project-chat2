@@ -1,6 +1,6 @@
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from ttkbootstrap.scrolled import ScrolledText
+from ttkbootstrap.widgets.scrolled import ScrolledText
 from tkinter import BOTH, LEFT, RIGHT, Listbox
 
 

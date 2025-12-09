@@ -1,8 +1,6 @@
-import asyncio
 import websockets
 import json
-from datetime import datetime
-from protocol import make_message, parse_message
+from datetime import datetime, timezone
 
 class ChatNetwork:
     def __init__(self):
@@ -26,14 +24,14 @@ class ChatNetwork:
         print(f"✓ Connecté: {response_data['data']['message']}")
         
 
-    async def send_message(self, room, user, content):
+    async def send_message(self, user, content):
         message = {
             "action": "send_message",
             "data": {
                 "username": user,
                 "message": content
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         await self.ws.send(json.dumps(message))
 
@@ -44,7 +42,7 @@ class ChatNetwork:
             "data": {
                 "room_name": room_name
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         await self.ws.send(json.dumps(message))
 
@@ -55,7 +53,7 @@ class ChatNetwork:
             "data": {
                 "username": self.username
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         await self.ws.send(json.dumps(message))
 
@@ -66,7 +64,7 @@ class ChatNetwork:
             "data": {
                 "room_name": room_name
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         await self.ws.send(json.dumps(message))
 
@@ -75,7 +73,7 @@ class ChatNetwork:
         message = {
             "action": "list_rooms",
             "data": {},
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         await self.ws.send(json.dumps(message))
 
@@ -96,7 +94,8 @@ class ChatNetwork:
             except Exception as e:
                 print(f"Erreur lors de la réception: {e}")
 
-    def _adapt_server_message(self, server_msg):
+    @staticmethod
+    def _adapt_server_message(server_msg):
         """Convertit le format du serveur au format attendu par l'UI du client"""
         action = server_msg.get("action")
         data = server_msg.get("data", {})

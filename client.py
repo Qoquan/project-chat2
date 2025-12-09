@@ -71,7 +71,7 @@ class ChatClientApp:
         else:
             # Envoyer le message normal
             asyncio.run_coroutine_threadsafe(
-                self.network.send_message(self.current_room, self.username, msg),
+                self.network.send_message(self.username, msg),
                 self.loop
             )
         
