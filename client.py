@@ -96,6 +96,20 @@ class ChatUI:
         self.text_area.configure(state="disabled")
         self.text_area.see(END)
 
+    def display_message(self, username, message, is_self=False):
+        """Affiche un message formaté dans la zone de texte."""
+        if not self.text_area: return
+
+        user_tag = 'self_username' if is_self else 'username'
+        msg_tag = 'self_msg' if is_self else 'user_msg'
+        display_username = "Vous" if is_self else username
+
+        self.text_area.configure(state="normal")
+        self.text_area.insert(END, f'[{display_username}]: ', user_tag)
+        self.text_area.insert(END, f'{message}\n', msg_tag)
+        self.text_area.configure(state="disabled")
+        self.text_area.see(END)
+
     def configure_styles(self):
         """Définit les styles (couleurs, polices) pour les différents types de messages."""
         if not self.text_area: return
@@ -103,6 +117,8 @@ class ChatUI:
         self.text_area.tag_config('error', foreground="#ff4d4d", font=('Segoe UI', 9, 'bold'))
         self.text_area.tag_config('user_msg', foreground="#cccccc")
         self.text_area.tag_config('username', foreground="#007bff", font=('Segoe UI', 9, 'bold'))
+        self.text_area.tag_config('self_msg', foreground="white", font=('Segoe UI', 9, 'italic'))
+        self.text_area.tag_config('self_username', foreground="#17a2b8", font=('Segoe UI', 9, 'bold'))
 
 # ======================================================================================
 # Classe pour la Gestion du Réseau
@@ -138,7 +154,8 @@ class ChatNetwork:
     async def receive_loop(self, on_message_callback):
         """Boucle infinie pour écouter les messages du serveur."""
         try:
-            async for raw_msg in self.ws:
+            while True:
+                raw_msg = await self.ws.recv()
                 server_msg = json.loads(raw_msg)
                 on_message_callback(server_msg)
         except websockets.exceptions.ConnectionClosed:
@@ -224,6 +241,8 @@ class ChatClientApp:
             msg = self.ui.entry_message.get().strip()
             if msg:
                 self.ui.entry_message.delete(0, END)
+                # Affiche le message localement avant de l'envoyer
+                self.ui.display_message(self.username, msg, is_self=True)
                 try:
                     self.loop.call_soon_threadsafe(self.process_message_for_sending, msg)
                 except RuntimeError:
@@ -232,9 +251,9 @@ class ChatClientApp:
     def process_message_for_sending(self, msg: str):
         """Traite le message (commande ou texte) et l'envoie via le réseau."""
         if not self.is_running: return
-        
+
         coro = self.handle_command(msg) if msg.startswith("/") else self.network.send_json({"action": "send_message", "data": {"message": msg}})
-        
+
         if coro:
             asyncio.create_task(coro)
 
@@ -287,12 +306,12 @@ class ChatClientApp:
         data = msg.get("data", {})
 
         if action == "receive_message":
+            # Ne pas afficher les messages que l'on a soi-même envoyés (car déjà affichés localement)
+            if data.get("username") == self.username:
+                return  # On ignore notre propre message
+            
             if data.get("room_name") == self.current_room:
-                self.ui.text_area.configure(state="normal")
-                self.ui.text_area.insert(END, f'[{data.get("username")}]: ', 'username')
-                self.ui.text_area.insert(END, f'{data.get("message")}\n', 'user_msg')
-                self.ui.text_area.configure(state="disabled")
-                self.ui.text_area.see(END)
+                self.ui.display_message(data.get("username"), data.get("message"))
         elif action == "list_rooms":
             rooms_data = data.get("rooms", {})
             if self.ui.list_rooms:

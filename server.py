@@ -225,7 +225,7 @@ class MessageHandler:
             action=ActionType.RECEIVE_MESSAGE.value,
             data={"username": client.username, "message": content, "room_name": room_name}
         )
-        await self.broadcast(room_name, response)
+        await self.broadcast(room_name, response, exclude_ws=websocket)
 
     async def handle_create_room(self, websocket: Any, client: Client, data: Dict):
         """Gère la création d'un salon."""
@@ -274,13 +274,46 @@ class MessageHandler:
         await websocket.send(response.to_json())
 
     async def broadcast(self, room_name: str, message: ProtocolMessage, exclude_ws: Optional[Any] = None):
-        """Diffuse un message à tous les clients d'un salon."""
+        """Diffuse un message à tous les clients d'un salon de manière robuste."""
         room = self.state.rooms.get(room_name)
-        if not room: return
+        if not room:
+            server_logger.warning(f"Tentative de diffusion dans un salon inexistant: {room_name}")
+            return
 
-        tasks = [client_ws.send(message.to_json()) for client_ws in room.clients if client_ws != exclude_ws and client_ws.open]
+        message_json = message.to_json()
+        
+        # On utilise une copie de la liste des clients pour itérer
+        clients_to_iterate = list(room.clients)
+        dead_clients = []
+        tasks = []
+
+        for ws in clients_to_iterate:
+            if ws == exclude_ws:
+                continue
+            
+            try:
+                # On vérifie si la connexion est ouverte avant d'envoyer
+                if ws.open:
+                    tasks.append(ws.send(message_json))
+                else:
+                    dead_clients.append(ws)
+            except Exception:  # Attrape AttributeError si 'open' n'existe pas ou autres erreurs
+                server_logger.warning(f"Client invalide ou déconnecté trouvé dans le salon '{room_name}'.")
+                dead_clients.append(ws)
+
+        # Envoi des messages en parallèle
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Nettoyage des clients morts ou invalides
+        if dead_clients:
+            server_logger.info(f"Nettoyage de {len(dead_clients)} client(s) mort(s) du salon '{room_name}'.")
+            async with self.state.lock:
+                for ws in dead_clients:
+                    room.clients.discard(ws)
+                    # On supprime aussi de la liste globale des clients
+                    self.state.clients.pop(ws, None)
+
 
     async def broadcast_room_list(self):
         """Diffuse la liste mise à jour des salons à tous les clients connectés."""
@@ -309,25 +342,34 @@ class ChatServer:
         client = None
         try:
             # --- Étape 1: Enregistrement du client ---
+            server_logger.info("New connection attempt...")
             message_json = await websocket.recv()
             data = json.loads(message_json)
             username = data.get("username")
 
             if not username:
+                server_logger.warning("Connection rejected: no username provided.")
                 await websocket.send(ProtocolMessage.create_error("Nom d'utilisateur manquant.").to_json())
                 return
 
             if not await self.state.register_client(websocket, username):
+                server_logger.warning(f"Connection rejected: username '{username}' is taken.")
                 await websocket.send(ProtocolMessage.create_error(f"Le nom d'utilisateur '{username}' est déjà pris.").to_json())
                 return
 
             client = self.state.clients[websocket]
-            server_logger.info(f"✅ Client '{username}' enregistré et connecté.")
+            server_logger.info(f"✅ Client '{username}' registered. Sending welcome sequence...")
             await websocket.send(ProtocolMessage.create_success(f"Bienvenue {username} !").to_json())
             
+            server_logger.info(f"Broadcasting join message for '{username}'...")
             await self.handler.broadcast("general", ProtocolMessage.create_system_message(f"{username} a rejoint le chat."))
+            
+            server_logger.info(f"Sending room list to '{username}'...")
             await self.handler.handle_list_rooms(websocket, client, {})
+
+            server_logger.info(f"Broadcasting room list to all...")
             await self.handler.broadcast_room_list()
+            server_logger.info(f"Welcome sequence for '{username}' complete. Awaiting messages.")
 
             # --- Étape 2: Boucle de réception des messages ---
             async for message_json in websocket:
@@ -341,14 +383,17 @@ class ChatServer:
         except ConnectionClosed:
             server_logger.info(f"🔌 Connexion fermée pour {client.username if client else 'un client inconnu'}.")
         except Exception as e:
-            server_logger.error(f"Erreur inattendue avec {client.username if client else 'un client'}: {e}", exc_info=True)
+            server_logger.critical(f"💥 UNEXPECTED ERROR in handle_connection for {client.username if client else 'un client'}: {e}", exc_info=True)
         finally:
             # --- Étape 3: Nettoyage ---
             if client:
+                server_logger.info(f"Cleaning up connection for '{client.username}'...")
                 await self.state.unregister_client(websocket)
-                server_logger.info(f"🗑️ Client '{client.username}' déconnecté et nettoyé.")
+                server_logger.info(f"🗑️ Client '{client.username}' disconnected and cleaned up.")
                 await self.handler.broadcast(client.current_room, ProtocolMessage.create_system_message(f"{client.username} a quitté le chat."))
                 await self.handler.broadcast_room_list()
+            else:
+                server_logger.info("Cleaning up anonymous connection.")
     
     async def start(self):
         """Démarre le serveur WebSocket."""
