@@ -1,6 +1,65 @@
-# project-chat2
 # Rapport de Laboratoire
 ## Application de Chat en Temps Réel avec WebSocket
+
+---
+
+## Table des Matières
+
+1. [Introduction](#1-introduction)
+   - 1.1 [Contexte et Objectifs](#11-contexte-et-objectifs)
+   - 1.2 [Technologies Utilisées](#12-technologies-utilisées)
+
+2. [Architecture du Système](#2-architecture-du-système)
+   - 2.1 [Vue d'Ensemble](#21-vue-densemble)
+   - 2.2 [Protocole de Communication](#22-protocole-de-communication)
+
+3. [Implémentation Côté Serveur](#3-implémentation-côté-serveur)
+   - 3.1 [Architecture Modulaire](#31-architecture-modulaire)
+     - 3.1.1 [Gestion de l'État](#311-gestion-de-létat-serverstate)
+     - 3.1.2 [Gestionnaire de Messages](#312-gestionnaire-de-messages-messagehandler)
+     - 3.1.3 [Serveur Principal](#313-serveur-principal-chatserver)
+   - 3.2 [Gestion de la Concurrence](#32-gestion-de-la-concurrence)
+   - 3.3 [Robustesse et Logging](#33-robustesse-et-logging)
+
+4. [Implémentation Côté Client](#4-implémentation-côté-client)
+   - 4.1 [Architecture en Trois Couches](#41-architecture-en-trois-couches)
+     - 4.1.1 [Couche Interface](#411-couche-interface-chatui)
+     - 4.1.2 [Couche Réseau](#412-couche-réseau-chatnetwork)
+     - 4.1.3 [Couche Application](#413-couche-application-chatclientapp)
+   - 4.2 [Synchronisation UI-Réseau](#42-synchronisation-ui-réseau)
+   - 4.3 [Expérience Utilisateur](#43-expérience-utilisateur)
+
+5. [Fonctionnalités Principales](#5-fonctionnalités-principales)
+   - 5.1 [Gestion des Salons](#51-gestion-des-salons)
+   - 5.2 [Messagerie](#52-messagerie)
+   - 5.3 [Liste des Utilisateurs](#53-liste-des-utilisateurs)
+
+6. [Gestion des Erreurs](#6-gestion-des-erreurs)
+   - 6.1 [Côté Serveur](#61-côté-serveur)
+   - 6.2 [Côté Client](#62-côté-client)
+
+7. [Tests et Validation](#7-tests-et-validation)
+   - 7.1 [Scénarios de Test](#71-scénarios-de-test)
+   - 7.2 [Résultats](#72-résultats)
+
+8. [Améliorations Possibles](#8-améliorations-possibles)
+   - 8.1 [Court Terme](#81-court-terme)
+   - 8.2 [Long Terme](#82-long-terme)
+
+9. [Défis Rencontrés](#9-défis-rencontrés)
+   - 9.1 [Synchronisation Threading](#91-synchronisation-threading)
+   - 9.2 [Gestion des Doublons](#92-gestion-des-doublons)
+   - 9.3 [Nettoyage des Connexions](#93-nettoyage-des-connexions)
+
+10. [Conclusion](#10-conclusion)
+    - 10.1 [Objectifs Atteints](#101-objectifs-atteints)
+    - 10.2 [Compétences Développées](#102-compétences-développées)
+    - 10.3 [Apprentissages Clés](#103-apprentissages-clés)
+
+11. [Annexes](#annexes)
+    - A. [Structure des Fichiers](#a-structure-des-fichiers)
+    - B. [Dépendances](#b-dépendances)
+    - C. [Commandes de Lancement](#c-commandes-de-lancement)
 
 ---
 
@@ -487,6 +546,3 @@ python client.py
 
 ---
 
-**Fin du Rapport**
-
-*Document généré le 16 décembre 2025*
